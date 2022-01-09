@@ -79,10 +79,10 @@ def main():
     fieldnames = None
     if args.command == 'text_and_lang':
         func = seq2csv.format_text_and_lang
-        fieldnames = ['pid', 'collection', 'lang', 'text']
+        fieldnames = ['pid', 'collection', 'lang', 'text', "original"]
     elif args.command == 'key_and_value':
         func = seq2csv.format_key_and_value
-        fieldnames = ['key', 'collection', 'value']
+        fieldnames = ['key', 'collection', 'value', "original"]
     elif args.command == 'authors':
         func = seq2csv.format_authors
         fieldnames = ['key', 'collection', 'surname', 'given_names', 'orcid']

@@ -1,5 +1,6 @@
 import csv
 import os
+from unicodedata import normalize
 
 from html import unescape
 
@@ -136,7 +137,7 @@ def format_articles(row, subfield=None):
         return data
 
 
-def fix_value(words):
+def remove_extra_spaces(words):
     return " ".join([w.strip() for w in words.split(" ") if w])
 
 
@@ -158,7 +159,10 @@ def format_key_and_value(row, subfield=None):
     _value = _value.replace("/", ";")
     items = [v for v in _value.split(";")]
     return [
-        {"key": _id, "collection": collection, "value": fix_value(item)}
+        {
+            "key": _id, "collection": collection,
+            "value": fix_data(item), "original": item,
+        }
         for item in items
     ]
 
@@ -213,7 +217,32 @@ def format_text_and_lang(row, subfield):
             print(subfields)
             return {}
 
-        return {"pid": pid, "collection": collection, "lang": format_lang(subfields["l"]), "text": entity_to_char(txt), }
+        return {
+            "pid": pid, "collection": collection,
+            "lang": format_lang(subfields["l"]), "text": fix_data(txt),
+            "original": txt,
+        }
     except KeyError:
         return {}
+
+
+def remove_diacritics(s):
+    try:
+        s = normalize('NFKD', s)
+    except TypeError:
+        s = normalize('NFKD', unicode(s, "utf-8"))
+    finally:
+        return s.encode('ASCII', 'ignore').decode('ASCII')
+
+
+def fix_data(txt):
+    txt = entity_to_char(txt)
+    txt = remove_extra_spaces(txt)
+    txt = remove_diacritics(txt)
+    txt = txt.upper()
+    while txt and not txt[0].isalnum():
+        txt = txt[1:]
+    while txt and not txt[-1].isalnum():
+        txt = txt[:-2]
+    return txt
 
