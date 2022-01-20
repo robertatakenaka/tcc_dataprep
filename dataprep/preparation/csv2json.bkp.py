@@ -4,45 +4,47 @@ import json
 import csv
 
 
-LABELS_AND_FILENAME_SUFFIX = dict(
+# files = [
+#     'references/references.csv',
+#     'articles/articles.csv',
+#     'articles/articles_langs.csv',
+#     'data_with_lang/abstracts.csv',
+#     'data_with_lang/article_titles.csv',
+#     'data_with_lang/keywords.csv',
+# ]
+
+LABELS = dict(
+    langs='articles_langs',
     abstracts='abstracts',
     keywords='keywords',
     article_titles='article_titles',
     references='references',
+    articles='articles',
 )
 
 
 def get_fieldnames(file_path):
     with open(file_path, "r") as fp:
         for row in fp.readlines():
+            print("get_fieldnames", row)
             try:
                 return row.keys()
             except AttributeError:
-                print("get_fieldnames", row)
                 return row.strip().split(",")
 
 
-def get_article_json_file_path(folder_path, pid):
-    """
-    Retorna /folder_path/ISSN/YEAR/PID
-    """
-    return os.path.join(folder_path, pid[1:10], pid[10:14], pid)
-
-
-def _get_article_json_file_path(articles_json_folder_path, data_label, row):
-    """
-    Retorna /folder_path/ISSN/YEAR/PID_<data_label>.json
-    """
+def get_article_json_file_path(articles_json_folder_path, row):
     pid = row.get("pid") or row.get("key") or ''
     if len(pid) not in (23, 28):
         raise ValueError("pid is incorrect: %s" % row)
 
-    article_json_file_path = get_article_json_file_path(
-        articles_json_folder_path, pid[:23])
-    dirname = os.path.dirname(article_json_file_path)
+    year = pid[10:14]
+    issn = pid[1:10]
+    dirname = os.path.join(articles_json_folder_path, year, issn)
+
     if not os.path.isdir(dirname):
         os.makedirs(dirname)
-    return f"{article_json_file_path}_{data_label}.json"
+    return os.path.join(dirname, pid[:23])
 
 
 def add_article_data(article_json_file_path, data_label, row):
@@ -64,16 +66,9 @@ def add_article_data(article_json_file_path, data_label, row):
 
 
 def _get_data_label(filename):
-    for k, v in LABELS_AND_FILENAME_SUFFIX.items():
+    for k, v in LABELS.items():
         if k in filename:
             return v
-
-
-def format_data(row):
-    if row.get("original"):
-        row['text'] = row['original']
-        del row['original']
-    return row
 
 
 def merge_article_data(input_csv_file_path, output_articles_json_folder_path):
@@ -90,20 +85,20 @@ def merge_article_data(input_csv_file_path, output_articles_json_folder_path):
     data_label = _get_data_label(basename)
     if not data_label:
         raise ValueError(
-            "%s does not match with none of %s" % (basename, LABELS_AND_FILENAME_SUFFIX.keys()))
+            "%s does not match with none of %s" % (basename, LABELS.keys()))
 
     with open(input_csv_file_path, "r") as csvfile:
         reader = csv.DictReader(csvfile, fieldnames=fieldnames)
         for row in reader:
             try:
-                article_json_file_path = _get_article_json_file_path(
-                    output_articles_json_folder_path, data_label, row)
+                article_json_file_path = get_article_json_file_path(
+                    output_articles_json_folder_path, row)
             except ValueError as e:
                 print("")
                 print(e)
                 print("")
             else:
-                add_article_data(article_json_file_path, data_label, format_data(row))
+                add_article_data(article_json_file_path, data_label, row)
 
 
 def main():
@@ -113,8 +108,8 @@ def main():
 
     merge_article_data_parser = subparsers.add_parser(
         'merge_article_data',
-        help=("Lê arquivo `*.csv` que contém dados de um artigo"
-              " e cria um JSON correspondente")
+        help=("Lê arquivos vários `*.csv` que contém dados de um artigo"
+              " e cria um único arquivo `<pid>.json` por artigo")
     )
     merge_article_data_parser.add_argument(
         'input_csv_file_path',

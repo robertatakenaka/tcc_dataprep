@@ -49,9 +49,12 @@ setuptools.setup(
         "Topic :: Internet :: WWW/HTTP :: WSGI :: Application",
         "Operating System :: OS Independent",
     ],
-
-    entry_points="""\
-        [console_scripts]
-            seq2csv=dataprep.harvesting.seq2csv:main
-    """,
+	entry_points={
+        "console_scripts":[
+			"rs_prep_csv=dataprep.harvesting.seq2csv:main",
+			"migration_prep=dataprep.preparation.migration_inputs:main",
+            "rs_migration_prep=dataprep.preparation.migration_inputs:main",
+            "rs_migrate=dataprep.migration_from_isis:main",
+        ]
+    }
 )
