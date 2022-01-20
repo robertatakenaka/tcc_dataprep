@@ -77,9 +77,13 @@ def main():
 
     func = None
     fieldnames = None
+
     if args.command == 'text_and_lang':
+        sep = "|"
         func = seq2csv.format_text_and_lang
-        fieldnames = ['pid', 'collection', 'lang', 'text', "original"]
+        if "keyword" in args.seq_file_path:
+            sep = "~"
+        fieldnames = ['pid', 'collection', 'lang', 'text', "original", "pub_year"]
     elif args.command == 'key_and_value':
         func = seq2csv.format_key_and_value
         fieldnames = ['key', 'collection', 'value', "original"]
@@ -113,7 +117,7 @@ def main():
 
     if fieldnames and func and args.command:
         seq2csv.seq2csv(
-            args.seq_file_path, args.csv_file_path, fieldnames, func)
+            args.seq_file_path, args.csv_file_path, fieldnames, func, sep)
 
 
 if __name__ == "__main__":

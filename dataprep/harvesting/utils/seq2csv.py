@@ -17,28 +17,29 @@ def entity_to_char(text):
     return unescape(text)
 
 
-def seq2csv(seq_file_path, csv_file_path, fieldnames, fixer_func):
+def seq2csv(seq_file_path, csv_file_path, fieldnames, fixer_func, sep):
     basename = os.path.basename(seq_file_path)
     fixer = fixer_func or format_text_and_lang
     fieldnames = fieldnames or ['pid', 'collection', 'lang', 'text']
 
     subfield = SUBFIELDS.get(basename) or "*"
 
-    write_csv(read_seq_file(seq_file_path), fieldnames,
+    write_csv(read_seq_file(seq_file_path, sep=sep), fieldnames,
               csv_file_path, fixer, subfield)
 
 
-def read_seq_file(file_path, fieldnames=None):
+def read_seq_file(file_path, fieldnames=None, sep="|"):
     try:
         with open(file_path, "rb") as fp:
             for row in fp.readlines():
-                yield [item for item in row.decode("utf-8").strip().split("|")]
+                row = row.decode("utf-8").strip()
+                yield [item for item in row.split(sep)]
     except UnicodeDecodeError:
 
         with open(file_path, "r", encoding="iso-8859-1") as fp:
             for row in fp.readlines():
                 try:
-                    yield [item for item in row.strip().split("|")]
+                    yield [item for item in row.strip().split(sep)]
                 except Exception as e:
                     print("read_seq_file")
                     print(e)
@@ -173,7 +174,10 @@ def format_text_and_lang(row, subfield):
         _text = row["text"]
     except (KeyError, TypeError):
         try:
-            _pid, _text = row
+            if len(row) == 2:
+                _pid, _text = row
+            else:
+                _pid, _text, _year = row
         except ValueError as e:
             _pid = row[0]
             _text = "|".join(row[1:])
@@ -221,6 +225,7 @@ def format_text_and_lang(row, subfield):
             "pid": pid, "collection": collection,
             "lang": format_lang(subfields["l"]), "text": fix_data(txt),
             "original": txt,
+            "pub_year": pid[10:14]
         }
     except KeyError:
         return {}
