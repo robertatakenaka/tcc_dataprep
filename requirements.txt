@@ -1,2 +1,0 @@
--e git+https://github.com/robertatakenaka/tcc_rs.git@626566c120c394a36ed6dae523219a047fb9898b#egg=rs
-

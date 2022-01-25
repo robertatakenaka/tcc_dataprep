@@ -12,8 +12,13 @@ def create_folder(*args):
 
 
 def write_file(file_path, content, mode="w"):
-    with open(file_path, mode) as fp:
-        fp.write(content)
+    try:
+        with open(file_path, mode) as fp:
+            fp.write(content)
+    except FileNotFoundError:
+        os.makedirs(os.path.dirname(file_path))
+        with open(file_path, mode) as fp:
+            fp.write(content)
 
 
 def read_file(file_path):
