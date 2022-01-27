@@ -51,10 +51,8 @@ setuptools.setup(
     ],
 	entry_points={
         "console_scripts":[
-			"rs_prep_csv=dataprep.harvesting.seq2csv:main",
-			"migration_prep=dataprep.preparation.migration_inputs:main",
-            "rs_migration_prep=dataprep.preparation.migration_inputs:main",
-            "rs_migrate=dataprep.migration_from_isis:main",
+			"rs_analysis_prep=dataprep.harvesting.seq2csv:main",
+            "rs_inputs_prep=dataprep.preparation.migration_inputs:main",
         ]
     }
 )

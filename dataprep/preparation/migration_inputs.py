@@ -91,7 +91,7 @@ def format_data(row):
     return row
 
 
-def csv_rows_to_json_data(input_csv_file_path, output_articles_json_folder_path):
+def csv_rows_to_json(input_csv_file_path, output_articles_json_folder_path):
     """
     Lê um arquivo CSV que contém um dos dados de artigo, por exemplo:
     references, langs, abstracts, ... e insere este dado no arquivo JSON
@@ -367,10 +367,43 @@ def _create_shell_scripts(json_files_lists, folder_path, filename_prefix, total)
     return cmds
 
 
-def _get_rs_command(json_file_path, output_jsonl_file_path):
-    return (
-        f"{RS_APP_CALL} receive_paper new {json_file_path} {output_jsonl_file_path}\n"
-    )
+def _shell_script_inputs(json_files_lists, folder_path, filename_prefix, total):
+    """
+    Create a file which contains a list of JSON file paths
+    """
+    lists_paths = []
+    for i, json_files in enumerate(json_files_lists):
+
+        name = f"{filename_prefix}_{i+1}_{len(json_files)}_{total}"
+
+        input_file_path = os.path.join(folder_path, f"{name}.lst")
+
+        files_utils.write_file(input_file_path, "\n".join(json_files))
+
+        lists_paths.append(input_file_path)
+
+    return lists_paths
+
+
+def _create_shell_script(input_files_paths, sh_file_path):
+    # create a shell script for the lists
+
+    files_utils.write_file(sh_file_path, "")
+
+    for input_file_path in input_files_paths:
+
+        name, ext = os.path.splitext(input_file_path)
+        result_jsonl_file_path = f"{name}.jsonl"
+        out_file_path = f"{name}.out"
+
+        files_utils.write_file(result_jsonl_file_path, "")
+        files_utils.write_file(out_file_path, "")
+
+        cmd = (
+            f"nohup {RS_APP_CALL} register_new_papers "
+            f"{input_file_path} {result_jsonl_file_path}>{out_file_path}&\n"
+        )
+        files_utils.write_file(sh_file_path, cmd, "a")
 
 
 def create_register_papers_sh(
@@ -398,13 +431,13 @@ def create_register_papers_sh(
         list_filename_prefix or
         os.path.splitext(os.path.basename(pid_csv_file_path))[0]
     )
-    cmds = _create_shell_scripts(
-            json_files_lists, outs_folder_path, prefix, len(json_file_paths)
+    input_files_paths = _shell_script_inputs(
+        json_files_lists, outs_folder_path, prefix, len(json_file_paths)
     )
-    files_utils.write_file(main_shell_script_path, "\n".join(cmds))
+    _create_shell_script(input_files_paths, main_shell_script_path)
     return {
         "shell script": main_shell_script_path,
-        "outs": outs_folder_path,
+        "outs path": outs_folder_path,
     }
 
 
@@ -412,16 +445,16 @@ def main():
     parser = argparse.ArgumentParser(description="Migration tool")
     subparsers = parser.add_subparsers(title="Commands", metavar="", dest="command")
 
-    csv_rows_to_json_data_parser = subparsers.add_parser(
-        'csv_rows_to_json_data',
+    csv_rows_to_json_parser = subparsers.add_parser(
+        'csv_rows_to_json',
         help=("Lê arquivo `*.csv` que contém dados de um artigo"
               " e cria um JSON correspondente")
     )
-    csv_rows_to_json_data_parser.add_argument(
+    csv_rows_to_json_parser.add_argument(
         'input_csv_file_path',
         help='input_csv_file_path'
     )
-    csv_rows_to_json_data_parser.add_argument(
+    csv_rows_to_json_parser.add_argument(
         'output_folder_path',
         help='output_folder_path'
     )
@@ -498,8 +531,8 @@ def main():
             int(args.simultaneous_calls or 4),
         )
         print(ret)
-    elif args.command == 'csv_rows_to_json_data':
-        csv_rows_to_json_data(
+    elif args.command == 'csv_rows_to_json':
+        csv_rows_to_json(
             args.input_csv_file_path, args.output_folder_path)
     elif args.command == 'create_json_files_for_rs':
         create_json_files_for_rs(
