@@ -21,6 +21,19 @@ def main():
     #     help='csv_file_path'
     # )
 
+    text_and_lang_and_year_parser = subparsers.add_parser(
+        'text_and_lang_and_year',
+        help=("Converte `text_and_lang_and_year.seq` para `text_and_lang_and_year.csv`")
+    )
+    text_and_lang_and_year_parser.add_argument(
+        'seq_file_path',
+        help='seq_file_path'
+    )
+    text_and_lang_and_year_parser.add_argument(
+        'csv_file_path',
+        help='csv_file_path'
+    )
+
     text_and_lang_parser = subparsers.add_parser(
         'text_and_lang',
         help=("Converte `text_and_lang.seq` para `text_and_lang.csv`")
@@ -77,13 +90,17 @@ def main():
 
     func = None
     fieldnames = None
-
-    if args.command == 'text_and_lang':
+    if args.command == 'text_and_lang_and_year':
         sep = "|"
-        func = seq2csv.format_text_and_lang
+        func = seq2csv.format_text_and_lang_and_year
         if "keyword" in args.seq_file_path:
             sep = "~"
-        fieldnames = ['pid', 'collection', 'lang', 'text', "original", "pub_year"]
+        fieldnames = [
+            'pid', 'collection', 'lang', 'text', "original", "pub_year"]
+    elif args.command == 'text_and_lang':
+        sep = "|"
+        func = seq2csv.format_text_and_lang
+        fieldnames = ['pid', 'collection', 'lang', 'text', "original"]
     elif args.command == 'key_and_value':
         func = seq2csv.format_key_and_value
         fieldnames = ['key', 'collection', 'value', "original"]
@@ -117,7 +134,8 @@ def main():
 
     if fieldnames and func and args.command:
         seq2csv.seq2csv(
-            args.seq_file_path, args.csv_file_path, fieldnames, func, sep)
+            args.seq_file_path, args.csv_file_path,
+            fieldnames, func, sep)
 
 
 if __name__ == "__main__":
