@@ -5,6 +5,8 @@ from unicodedata import normalize
 from html import unescape
 
 
+FIELDS = "pid,collection,lang,text,original,pub_year".split(",")
+
 SUBFIELDS = {
     "abstracts.seq": "a",
     "article_titles.seq": "t",
@@ -12,6 +14,7 @@ SUBFIELDS = {
     "title_mission.seq": "*",
 }
 
+LANGS = {}
 
 def write_file(file_path, content, mode="w"):
     try:
@@ -256,7 +259,8 @@ def _get_row_data(row, subfield, _pid, _text, _year=None):
 
     lang = clean_lang(subfields.get("l"))
 
-    if ' THE ' in text and lang != 'en':
+    if ' THE ' in cleaned_text and lang != 'en':
+        print(pid, lang, cleaned_text[:10])
         lang = 'en'
 
     _year = _year or pid[10:14]
@@ -288,3 +292,64 @@ def standardize_text(txt):
     while txt and not txt[-1].isalnum():
         txt = txt[:-2]
     return txt
+
+
+def read_csv_file(file_path, fieldnames=None):
+    fieldnames = fieldnames or FIELDS
+    with open(file_path, newline='') as csvfile:
+        reader = csv.DictReader(csvfile, fieldnames=fieldnames)
+        for row in reader:
+            yield row
+
+
+LANGS = {
+    row['lang']: row['lang_text']
+    for row in read_csv_file('dataprep/utils/LANGS.csv', ['lang_text', 'lang'])
+}
+print(LANGS)
+
+
+def _get_time_range(pub_year):
+    pub_year = int(pub_year)
+    if pub_year < 1925:
+        return '1900-1924'
+    if pub_year < 1950:
+        return '1925-1949'
+    if pub_year < 1975:
+        return '1950-1974'
+    if pub_year < 2000:
+        return '1975-1999'
+    if pub_year < 2025:
+        return '2000-'
+
+
+def _add_other_colums(new_row, row):
+    new_row['lang_text'] = LANGS.get(row['lang'])
+    new_row['issn_id'] = row['pid'][1:10]
+    new_row['time_range'] = _get_time_range(row['pub_year'])
+    return new_row
+
+
+def write_csv_file_with_selected_fieldnames(input_file_path, output_file_path, selected_fieldnames):
+    with open(output_file_path, newline='', mode="w") as csvfile:
+        fieldnames = ['lang_text', 'issn_id', 'time_range']
+        fieldnames.extend(
+            selected_fieldnames
+        )
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+        writer.writeheader()
+
+        for row in read_csv_file(input_file_path):
+            try:
+                if len(row['pid']) != 23:
+                    raise ValueError
+                new_row = {
+                    k: row[k]
+                    for k in selected_fieldnames
+                }
+                new_row = _add_other_colums(new_row, row)
+            except (KeyError, ValueError):
+                continue
+            else:
+                writer.writerow(new_row)
+

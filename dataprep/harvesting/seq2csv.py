@@ -86,6 +86,24 @@ def main():
         help='csv_file_path'
     )
 
+    select_columns_parser = subparsers.add_parser(
+        'select_columns',
+        help=("Select columns of a CSV file")
+    )
+    select_columns_parser.add_argument(
+        'input_csv_file_path',
+        help='input_csv_file_path'
+    )
+    select_columns_parser.add_argument(
+        'output_csv_file_path',
+        help='output_csv_file_path'
+    )
+
+    select_columns_parser.add_argument(
+        'selected_columns',
+        help='pid,lang,pub_year'
+    )
+
     args = parser.parse_args()
 
     func = None
@@ -129,6 +147,12 @@ def main():
                       'vol', 'num', 'suppl',
                       'fpage', 'lpage', 'page_seq', 'elocation',
                       'doi', 'path', 'doctopic']
+    elif args.command == 'select_columns':
+        seq2csv.write_csv_file_with_selected_fieldnames(
+            args.input_csv_file_path,
+            args.output_csv_file_path,
+            args.selected_columns.split(","),
+        )
     else:
         parser.print_help()
 
