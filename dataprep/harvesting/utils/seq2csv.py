@@ -4,6 +4,9 @@ from unicodedata import normalize
 
 from html import unescape
 
+# coleções temáticas que podem contribuir com repetições de registros
+# por isso devem ser ignoradas
+SKIP_COLLECTIONS = ["sss", "rve", "spa"]
 
 FIELDS = "pid,collection,lang,text,original,pub_year".split(",")
 
@@ -15,6 +18,7 @@ SUBFIELDS = {
 }
 
 LANGS = {}
+
 
 def write_file(file_path, content, mode="w"):
     try:
@@ -72,6 +76,8 @@ def write_csv(rows, fieldnames, output_file_path, fixer, sep, subfield=None):
         for row in rows:
             try:
                 fixed = fixer(row, subfield, sep)
+                if fixed['collection'] in SKIP_COLLECTIONS:
+                    raise ValueError(f"Skip collection {fixed['collection']}")
             except ValueError:
                 write_file(output_file_path+".err", str(row) + "\n", "a")
             else:
@@ -306,21 +312,29 @@ LANGS = {
     row['lang']: row['lang_text']
     for row in read_csv_file('dataprep/utils/LANGS.csv', ['lang_text', 'lang'])
 }
-print(LANGS)
+
+
+def _get_journals_areas():
+    journals_areas = {}
+    for row in read_csv_file('dataprep/utils/journals_areas_pt.csv', ['issn_id', 'collection', 'subject_area']):
+        issn_id = row['issn_id']
+        journals_areas[issn_id] = journals_areas.get(issn_id) or []
+        journals_areas[issn_id].append(row['subject_area'])
+    print(journals_areas)
+    return journals_areas
+
+
+YEARS = [1900, 1940, 1980, 1990, 2000, 2005, 2010, 2015, 2020, 2025]
 
 
 def _get_time_range(pub_year):
+
     pub_year = int(pub_year)
-    if pub_year < 1925:
-        return '1900-1924'
-    if pub_year < 1950:
-        return '1925-1949'
-    if pub_year < 1975:
-        return '1950-1974'
-    if pub_year < 2000:
-        return '1975-1999'
-    if pub_year < 2025:
-        return '2000-'
+    prev = 1890
+    for year in YEARS:
+        if pub_year < year:
+            return f'{prev}-{year}'
+        prev = year
 
 
 def _add_other_colums(new_row, row):
@@ -330,9 +344,10 @@ def _add_other_colums(new_row, row):
     return new_row
 
 
-def write_csv_file_with_selected_fieldnames(input_file_path, output_file_path, selected_fieldnames):
+def prepare_abstracts_ds(input_file_path, output_file_path, selected_fieldnames):
+    SUBJ_AREAS = _get_journals_areas()
     with open(output_file_path, newline='', mode="w") as csvfile:
-        fieldnames = ['lang_text', 'issn_id', 'time_range']
+        fieldnames = ['lang_text', 'issn_id', 'time_range', 'subject_area']
         fieldnames.extend(
             selected_fieldnames
         )
@@ -343,6 +358,8 @@ def write_csv_file_with_selected_fieldnames(input_file_path, output_file_path, s
             try:
                 if len(row['pid']) != 23:
                     raise ValueError
+                if row['collection'] in SKIP_COLLECTIONS:
+                    raise ValueError(f"Skip collection {row['collection']}")
                 new_row = {
                     k: row[k]
                     for k in selected_fieldnames
@@ -351,5 +368,10 @@ def write_csv_file_with_selected_fieldnames(input_file_path, output_file_path, s
             except (KeyError, ValueError):
                 continue
             else:
-                writer.writerow(new_row)
-
+                try:
+                    for sa in SUBJ_AREAS[new_row['issn_id']]:
+                        new_row['subject_area'] = sa
+                        writer.writerow(new_row)
+                except KeyError as e:
+                    new_row['subject_area'] = 'UNKNOWN'
+                    writer.writerow(new_row)

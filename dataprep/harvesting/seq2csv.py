@@ -86,20 +86,20 @@ def main():
         help='csv_file_path'
     )
 
-    select_columns_parser = subparsers.add_parser(
-        'select_columns',
+    prepare_abstracts_ds_parser = subparsers.add_parser(
+        'prepare_abstracts_ds',
         help=("Select columns of a CSV file")
     )
-    select_columns_parser.add_argument(
+    prepare_abstracts_ds_parser.add_argument(
         'input_csv_file_path',
         help='input_csv_file_path'
     )
-    select_columns_parser.add_argument(
+    prepare_abstracts_ds_parser.add_argument(
         'output_csv_file_path',
         help='output_csv_file_path'
     )
 
-    select_columns_parser.add_argument(
+    prepare_abstracts_ds_parser.add_argument(
         'selected_columns',
         help='pid,lang,pub_year'
     )
@@ -147,8 +147,8 @@ def main():
                       'vol', 'num', 'suppl',
                       'fpage', 'lpage', 'page_seq', 'elocation',
                       'doi', 'path', 'doctopic']
-    elif args.command == 'select_columns':
-        seq2csv.write_csv_file_with_selected_fieldnames(
+    elif args.command == 'prepare_abstracts_ds':
+        seq2csv.prepare_abstracts_ds(
             args.input_csv_file_path,
             args.output_csv_file_path,
             args.selected_columns.split(","),
