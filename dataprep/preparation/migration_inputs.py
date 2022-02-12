@@ -344,29 +344,6 @@ def pids_sorted_by_year(pids):
     ]
 
 
-def _create_shell_scripts(json_files_lists, folder_path, filename_prefix, total):
-    # create a shell script for each list
-    cmds = []
-    for i, json_files in enumerate(json_files_lists):
-
-        name = f"{filename_prefix}_{i+1}_{len(json_files)}_{total}"
-
-        sh_file_path = os.path.join(folder_path, f"{name}.sh")
-        jsonl_file_path = os.path.join(folder_path, f"{name}.jsonl")
-        out_file_path = os.path.join(folder_path, f"{name}.out")
-
-        files_utils.write_file(sh_file_path, "")
-        files_utils.write_file(jsonl_file_path, "")
-        files_utils.write_file(out_file_path, "")
-
-        cmds.append(f"chmod +x {sh_file_path};nohup {sh_file_path}>{out_file_path}&\n")
-
-        for json_file in json_files:
-            cmd = _get_rs_command(json_file, jsonl_file_path)
-            files_utils.write_file(sh_file_path, cmd, "a")
-    return cmds
-
-
 def _shell_script_inputs(json_files_lists, folder_path, filename_prefix, total):
     """
     Create a file which contains a list of JSON file paths
@@ -385,11 +362,12 @@ def _shell_script_inputs(json_files_lists, folder_path, filename_prefix, total):
     return lists_paths
 
 
-def _create_shell_script(input_files_paths, sh_file_path):
+def _create_shell_script(input_files_paths, sh_file_path, split_abstracts):
     # create a shell script for the lists
 
     files_utils.write_file(sh_file_path, "")
 
+    split_abstracts = split_abstracts or 'split_abstracts'
     for input_file_path in input_files_paths:
 
         name, ext = os.path.splitext(input_file_path)
@@ -401,7 +379,7 @@ def _create_shell_script(input_files_paths, sh_file_path):
 
         cmd = (
             f"nohup {RS_APP_CALL} register_new_papers "
-            f"{input_file_path} {result_jsonl_file_path}>{out_file_path}&\n"
+            f"{input_file_path} {result_jsonl_file_path} {split_abstracts}>{out_file_path}&\n"
         )
         files_utils.write_file(sh_file_path, cmd, "a")
 
@@ -410,7 +388,9 @@ def create_register_papers_sh(
         pid_csv_file_path, articles_json_folder_path,
         outs_folder_path, main_shell_script_path,
         list_filename_prefix=None,
-        n_calls=None):
+        n_calls=None,
+        split_abstracts=None,
+        ):
 
     # le os pids de um arquivo csv
     pids = get_pids_from_csv_file(pid_csv_file_path)
@@ -432,9 +412,9 @@ def create_register_papers_sh(
         os.path.splitext(os.path.basename(pid_csv_file_path))[0]
     )
     input_files_paths = _shell_script_inputs(
-        json_files_lists, outs_folder_path, prefix, len(json_file_paths)
+        json_files_lists, outs_folder_path, prefix, len(json_file_paths),
     )
-    _create_shell_script(input_files_paths, main_shell_script_path)
+    _create_shell_script(input_files_paths, main_shell_script_path, split_abstracts)
     return {
         "shell script": main_shell_script_path,
         "outs path": outs_folder_path,
@@ -511,6 +491,12 @@ def main():
         )
     )
     create_register_papers_sh_parser.add_argument(
+        "--split_abstracts",
+        help=(
+            "Each abstract is considered one different article"
+        )
+    )
+    create_register_papers_sh_parser.add_argument(
         "--filename_prefix",
         help=("Prefix for filename that contains the splitted list of pids")
     )
@@ -529,6 +515,7 @@ def main():
             args.shell_script_file_path,
             args.filename_prefix,
             int(args.simultaneous_calls or 4),
+            args.split_abstracts,
         )
         print(ret)
     elif args.command == 'csv_rows_to_json':
