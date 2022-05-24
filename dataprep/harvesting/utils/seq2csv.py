@@ -185,7 +185,7 @@ def format_key_and_value(row, subfield=None, sep="|"):
     return [
         {
             "key": _id, "collection": collection,
-            "value": standardize_text(item), "original": item,
+            "value": standardize_keyword(item), "original": item,
         }
         for item in items
     ]
@@ -288,7 +288,7 @@ def remove_diacritics(s):
         return s.encode('ASCII', 'ignore').decode('ASCII')
 
 
-def standardize_text(txt):
+def standardize_keyword(txt):
     txt = entity_to_char(txt)
     txt = remove_extra_spaces(txt)
     txt = remove_diacritics(txt)
@@ -297,6 +297,11 @@ def standardize_text(txt):
         txt = txt[1:]
     while txt and not txt[-1].isalnum():
         txt = txt[:-2]
+    return txt
+
+
+def standardize_text(txt):
+    txt = entity_to_char(txt)
     return txt
 
 
@@ -375,3 +380,47 @@ def prepare_abstracts_ds(input_file_path, output_file_path, selected_fieldnames)
                 except KeyError as e:
                     new_row['subject_area'] = 'UNKNOWN'
                     writer.writerow(new_row)
+
+
+def ent2char(text):
+    return html.unescape(s)
+
+
+def fix_htmlentities(input_file_path, output_file_path):
+    dirname = os.path.dirname(output_file_path)
+    if not os.path.isdir(dirname):
+        os.makedirs(dirname)
+
+    with open(output_file_path, 'w', encoding="utf-8") as fp:
+        fp.write("")
+
+    with open(input_file_path, "r") as fp:
+        for row in fp.readlines():
+            try:
+                row = standardize_text(row)
+            except:
+                print(row)
+
+            with open(output_file_path, 'a', encoding="utf-8") as fp:
+                fp.write(row)
+
+
+def fix_htmlentities_in_csv(input_file_path, output_file_path, origin, destination, fieldnames):
+    dirname = os.path.dirname(output_file_path)
+    if not os.path.isdir(dirname):
+        os.makedirs(dirname)
+
+    fieldnames = fieldnames.strip().split(",")
+    print(fieldnames)
+
+    with open(output_file_path, newline='', mode="w") as csvfile:
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+        writer.writeheader()
+
+        for row in read_csv_file(input_file_path, fieldnames):
+            try:
+                row[destination] = standardize_text(row[origin])
+            except:
+                print(row)
+
+            writer.writerow(row)
